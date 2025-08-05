@@ -1,158 +1,165 @@
 import { useState } from 'react';
-import { Header } from '@/components/Header';
-import { CodeEditor } from '@/components/CodeEditor';
-import { DebugResults, type AnalysisResult } from '@/components/DebugResults';
-import { AICodeGenerator } from '@/components/AICodeGenerator';
-import { LanguageStats } from '@/components/LanguageStats';
-import { analyzeCode, generateCode } from '@/services/codeAnalysis';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+const GEMINI_API_KEY = 'AIzaSyDJLeQ0jVM7VtKI4dM4JjNgRR-wY92vNog';
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+
+const LANGUAGES = [
+  'JavaScript',
+  'Python', 
+  'Java',
+  'C++',
+  'HTML',
+  'CSS'
+];
 
 const Index = () => {
-  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+  const [code, setCode] = useState('');
+  const [language, setLanguage] = useState('JavaScript');
+  const [prompt, setPrompt] = useState('');
+  const [result, setResult] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleAnalyzeCode = async (code: string, language: string) => {
-    setIsAnalyzing(true);
-    setAnalysisResult(null);
-    
+  const checkCode = async () => {
+    if (!code.trim()) {
+      toast.error('Please enter some code');
+      return;
+    }
+
+    setIsLoading(true);
     try {
-      const result = await analyzeCode(code, language);
-      setAnalysisResult(result);
+      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+      const promptText = `Check this ${language} code for errors and explain any problems in simple, beginner-friendly language:\n\n${code}`;
       
-      if (result.hasErrors) {
-        toast.error(`Found ${result.errors.length} issue(s) in your code`);
-      } else {
-        toast.success('No issues found! Your code looks great.');
-      }
+      const result = await model.generateContent(promptText);
+      const response = await result.response;
+      setResult(response.text());
+      toast.success('Code checked!');
     } catch (error) {
-      toast.error('Failed to analyze code. Please try again.');
-      console.error('Analysis error:', error);
+      toast.error('Error checking code');
+      console.error(error);
     } finally {
-      setIsAnalyzing(false);
+      setIsLoading(false);
     }
   };
 
-  const handleGenerateCode = async (prompt: string, language: string) => {
-    setIsGenerating(true);
-    setGeneratedCode(null);
-    
+  const generateCode = async () => {
+    if (!prompt.trim()) {
+      toast.error('Please enter a prompt');
+      return;
+    }
+
+    setIsLoading(true);
     try {
-      const code = await generateCode(prompt, language);
-      setGeneratedCode(code);
-      toast.success('Code generated successfully!');
+      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+      const promptText = `Generate simple ${language} code for: ${prompt}. Make it beginner-friendly with comments.`;
+      
+      const result = await model.generateContent(promptText);
+      const response = await result.response;
+      setCode(response.text().replace(/```[\w]*\n?/g, '').replace(/```/g, ''));
+      toast.success('Code generated!');
     } catch (error) {
-      toast.error('Failed to generate code. Please try again.');
-      console.error('Generation error:', error);
+      toast.error('Error generating code');
+      console.error(error);
     } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleFixCode = (errorIndex: number) => {
-    if (analysisResult && analysisResult.errors[errorIndex]) {
-      const error = analysisResult.errors[errorIndex];
-      toast.success(`Auto-fix suggestion: ${error.suggestion}`);
-      // In a real app, this would apply the fix to the code
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      
-      <main className="container max-w-7xl mx-auto px-4 py-8">
-        {/* Hero Section */}
-        <div className="text-center mb-12">
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-glow opacity-20 blur-3xl" />
-            <div className="relative">
-              <h1 className="text-4xl md:text-6xl font-bold mb-6">
-                <span className="bg-gradient-primary bg-clip-text text-transparent">
-                  Debug & Generate
-                </span>
-                <br />
-                <span className="text-foreground">Code with AI</span>
-              </h1>
-              <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-                Advanced code analysis and AI-powered generation for multiple programming languages.
-                Debug your code, understand errors, and generate new code from natural language.
-              </p>
-            </div>
-          </div>
+    <div className="min-h-screen bg-background p-4">
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-foreground mb-2">Simple Code Helper</h1>
+          <p className="text-muted-foreground">Check your code for errors or generate new code with AI</p>
         </div>
 
-        {/* Main Content Grid */}
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Left Column - Code Editor */}
-          <div className="lg:col-span-2 space-y-8">
-            <CodeEditor 
-              onAnalyze={handleAnalyzeCode}
-              isAnalyzing={isAnalyzing}
+        {/* Language Selection */}
+        <Card className="p-4">
+          <div className="flex items-center gap-4 mb-4">
+            <label className="text-sm font-medium">Language:</label>
+            <Select value={language} onValueChange={setLanguage}>
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LANGUAGES.map((lang) => (
+                  <SelectItem key={lang} value={lang}>{lang}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </Card>
+
+        {/* Code Input */}
+        <Card className="p-4">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Your Code</h2>
+              <Badge variant="secondary">Input</Badge>
+            </div>
+            <Textarea
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="Paste your code here..."
+              className="min-h-64 font-mono text-sm"
             />
-            
-            <DebugResults 
-              result={analysisResult}
-              isAnalyzing={isAnalyzing}
-              onFixCode={handleFixCode}
+            <Button 
+              onClick={checkCode} 
+              disabled={isLoading}
+              className="w-full"
+            >
+              {isLoading ? 'Checking...' : 'Check for Errors'}
+            </Button>
+          </div>
+        </Card>
+
+        {/* AI Code Generator */}
+        <Card className="p-4">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Generate Code</h2>
+              <Badge variant="outline">AI Generator</Badge>
+            </div>
+            <Input
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="Describe what code you want (e.g., 'a function to add two numbers')"
             />
+            <Button 
+              onClick={generateCode} 
+              disabled={isLoading}
+              variant="outline"
+              className="w-full"
+            >
+              {isLoading ? 'Generating...' : 'Generate Code'}
+            </Button>
           </div>
+        </Card>
 
-          {/* Right Column - AI Generator & Stats */}
-          <div className="space-y-8">
-            <AICodeGenerator 
-              onGenerateCode={handleGenerateCode}
-              isGenerating={isGenerating}
-              generatedCode={generatedCode}
-            />
-            
-            <LanguageStats />
-          </div>
-        </div>
-
-        {/* Features Grid */}
-        <div className="mt-16 grid md:grid-cols-3 gap-6">
-          <div className="text-center p-6 bg-card border border-border rounded-lg shadow-card">
-            <div className="w-12 h-12 mx-auto mb-4 bg-primary/20 rounded-lg flex items-center justify-center">
-              <span className="text-2xl">🔍</span>
+        {/* Results */}
+        {result && (
+          <Card className="p-4">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Results</h2>
+                <Badge variant="destructive">Analysis</Badge>
+              </div>
+              <div className="bg-muted p-4 rounded-lg">
+                <pre className="whitespace-pre-wrap text-sm">{result}</pre>
+              </div>
             </div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">Smart Analysis</h3>
-            <p className="text-muted-foreground">
-              Advanced AI-powered code analysis that identifies errors, suggests fixes, and explains consequences.
-            </p>
-          </div>
-
-          <div className="text-center p-6 bg-card border border-border rounded-lg shadow-card">
-            <div className="w-12 h-12 mx-auto mb-4 bg-secondary/20 rounded-lg flex items-center justify-center">
-              <span className="text-2xl">⚡</span>
-            </div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">Code Generation</h3>
-            <p className="text-muted-foreground">
-              Generate production-ready code from natural language descriptions in multiple programming languages.
-            </p>
-          </div>
-
-          <div className="text-center p-6 bg-card border border-border rounded-lg shadow-card">
-            <div className="w-12 h-12 mx-auto mb-4 bg-accent/20 rounded-lg flex items-center justify-center">
-              <span className="text-2xl">🌐</span>
-            </div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">Multi-Language</h3>
-            <p className="text-muted-foreground">
-              Support for JavaScript, Python, Java, C++, C, HTML, CSS and more programming languages.
-            </p>
-          </div>
-        </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="mt-24 border-t border-border bg-background/95 backdrop-blur">
-        <div className="container max-w-7xl mx-auto px-4 py-8">
-          <div className="text-center text-muted-foreground">
-            <p>&copy; 2024 Debug Genie Lab. Powered by AI for developers worldwide.</p>
-          </div>
-        </div>
-      </footer>
+          </Card>
+        )}
+      </div>
     </div>
   );
 };
