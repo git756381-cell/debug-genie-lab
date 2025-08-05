@@ -35,7 +35,7 @@ const Index = () => {
 
     setIsLoading(true);
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       const promptText = `Check this ${language} code for errors and explain any problems in simple, beginner-friendly language:\n\n${code}`;
       
       const result = await model.generateContent(promptText);
@@ -58,7 +58,7 @@ const Index = () => {
 
     setIsLoading(true);
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       const promptText = `Generate simple ${language} code for: ${prompt}. Make it beginner-friendly with comments.`;
       
       const result = await model.generateContent(promptText);
