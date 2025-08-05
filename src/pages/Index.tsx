@@ -42,8 +42,12 @@ const Index = () => {
       const response = await result.response;
       setResult(response.text());
       toast.success('Code checked!');
-    } catch (error) {
-      toast.error('Error checking code');
+    } catch (error: any) {
+      if (error.message?.includes('overloaded')) {
+        toast.error('AI service is busy. Please try again in a moment.');
+      } else {
+        toast.error('Error checking code');
+      }
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -65,8 +69,12 @@ const Index = () => {
       const response = await result.response;
       setCode(response.text().replace(/```[\w]*\n?/g, '').replace(/```/g, ''));
       toast.success('Code generated!');
-    } catch (error) {
-      toast.error('Error generating code');
+    } catch (error: any) {
+      if (error.message?.includes('overloaded')) {
+        toast.error('AI service is busy. Please try again in a moment.');
+      } else {
+        toast.error('Error generating code');
+      }
       console.error(error);
     } finally {
       setIsLoading(false);
